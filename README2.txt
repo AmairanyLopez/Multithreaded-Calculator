@@ -7,13 +7,19 @@ consisting only of non-negative integers and three operators: grouping
 "()", addition "+", and multiplication "*".  For example, given the
 string "4*(6+3)" as input, the expected output is the string "36".
 
-Multiple expressions are read from stdin, seperated by newlines, and evaluated concurrently.  A period '.' as the first character of a line indicates end of input.  Then the program can stop once all of the expressions already entered have been processed.
+Multiple expressions are read from stdin, seperated by newlines, and evaluated concurrently.  
+A period '.' as the first character of a line indicates end of input.  Then the program can stop once all of the expressions already entered have been processed.
 
-There should be no whitespace, negative numbers, fractions, etc.  You should not implement precedence rules for operations; the test input will disambiguate the precedence order using the grouping operator, i.e., we will test "4+(6*3)" but never "4+6*3".  In general, unless specifically asked in one of the steps below, you do not need to worry about the validity of the input.
+There should be no whitespace, negative numbers, fractions, etc.  
+You should not implement precedence rules for operations; the test input will disambiguate the precedence order using the grouping operator, i.e., we will test "4+(6*3)" but never "4+6*3".  In general, unless specifically asked in one of the steps below, you do not need to worry about the validity of the input.
 
-A skeleton implementation of the calculator is provided in calc.c.  The buffer[] array holds the inputted expressions, seperated by semicolons ';' (these are used internally only, and are never input by the user or output by the program!).
+A skeleton implementation of the calculator is provided in calc.c.  
+The buffer[] array holds the inputted expressions, seperated by semicolons ';' (these are used internally only, and are never input by the user or output by the program!).
 
-The first expression in the buffer is the one that is actively being reduced by the ungrouping, addition, and multiplication threads.  When this expression has been reduced to a single number (such that the buffer looks something like "36;2+5;..."), a sentinel thread detects this condition and prints that number to stout, followed by a newline, and removes the expression from the buffer, so work can start on the next expression, e.g., "36;2+5;" becomes "2+5;".
+The first expression in the buffer is the one that is actively being reduced by the ungrouping, addition, and multiplication threads.  
+When this expression has been reduced to a single number (such that the buffer looks something like "36;2+5;..."), 
+a sentinel thread detects this condition and prints that number to stout, followed by a newline, 
+and removes the expression from the buffer, so work can start on the next expression, e.g., "36;2+5;" becomes "2+5;".
 
 The calculator implementation encompasses five threads, aside from the
 main thread, all working concurrently:

@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <math.h>
 
 #define LENGTH(a) ( sizeof(a) / sizeof(*(a)) )
 
