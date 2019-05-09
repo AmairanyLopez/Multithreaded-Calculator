@@ -9,7 +9,7 @@ pthread_t readerThread;
 pthread_t sentinelThread;
 char buffer[BUF_SIZE];
 int num_ops;
-static pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t buffer_lock;
 /* Utiltity functions provided for your convenience */
 /* int2string converts an integer into a string and writes it in the
 passed char array s, which should be of reasonable size (e.g., 20
@@ -50,15 +50,16 @@ void * adder(void * arg) {
   char nString[50];
   while (1) {
     startOffset = remainderOffset = value1 = value2 = -1;
+    pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
+      pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
-    pthread_mutex_lock(&buffer_lock);
+
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
-      if ( buffer[i] == ';')
-      {
+      if (buffer[i] == ';') {
           break;
       }
       // start with a digit
@@ -95,9 +96,12 @@ void * adder(void * arg) {
         i = startOffset + (strlen(nString)) - 1;
         // increment number of operations
         num_ops++;
+        // if(buffer[0] != '\0')
+        //   printf("Add %s\n", buffer);
       }
     }
     pthread_mutex_unlock(&buffer_lock);
+    sched_yield();
   }
 }
 /* Looks for a multiplication symbol "*" surrounded by two numbers, e.g.
@@ -113,10 +117,11 @@ void * multiplier(void * arg) {
   char nString[50];
   while (1) {
     startOffset = remainderOffset = value1 = value2 = -1;
+    pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
+      pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
-    pthread_mutex_lock(&buffer_lock);
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
@@ -158,9 +163,12 @@ void * multiplier(void * arg) {
         // indicate that current thread has updated the buffer
         // increment number of operations
         num_ops++;
+        // if(buffer[0] != '\0')
+        //   printf("Multi %s\n", buffer);
       }
     }
     pthread_mutex_unlock(&buffer_lock);
+    sched_yield();
   }
 }
 /* Looks for a number immediately surrounded by parentheses [e.g.
@@ -170,17 +178,17 @@ void * degrouper(void * arg) {
   int bufferlen;
   int startOffset = 0;
   int i;
-
   while (1) {
-
+    pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
+      pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
-    pthread_mutex_lock(&buffer_lock);
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = (int) strlen(buffer);
 
     for (i = 0; i < bufferlen; i++) {
+
       // check for ';' to indicate finished processing expression
       if (buffer[i] == ';') {
         break;
@@ -188,6 +196,7 @@ void * degrouper(void * arg) {
 
       // check for '(' followed by a naked number followed by ')'
       if (buffer[i] == '(' && isdigit(buffer[i + 1])) {
+
         startOffset = i;
 
         //increment index past all digits
@@ -196,16 +205,20 @@ void * degrouper(void * arg) {
         }
         // remove ')' by shifting the tail end of the expression
         strcpy((buffer + i), (buffer + i + 1));
+
         // remove '(' by shifting the beginning of the expression
         strcpy((buffer + startOffset), (buffer + startOffset + 1));
         // set buffer length and position
+
         bufferlen -= 2;
         i = startOffset;
-
         num_ops++;
+        // if(buffer[0] != '\0')
+        //   printf("Deg %s\n", buffer);
       }
     }
     pthread_mutex_unlock(&buffer_lock);
+    sched_yield();
   }
 }
 /* sentinel waits for a number followed by a ; (e.g. "453;") to appear
@@ -282,25 +295,26 @@ void * reader(void * arg) {
 int smp3_main(int argc, char ** argv) {
   void * arg = 0; /* dummy value */
   if(pthread_mutex_init(&buffer_lock, NULL) != 0){
-    printErrorAndExit("Mutex error");
+    printErrorAndExit("Failed to create mutex");
   }
   /* let's create our threads */
-  if (pthread_create( & multiplierThread, NULL, multiplier, arg) ||
+  if (pthread_create( & degrouperThread, NULL, degrouper, arg) ||
     pthread_create( & adderThread, NULL, adder, arg) ||
-    pthread_create( & degrouperThread, NULL, degrouper, arg) ||
+    pthread_create( & multiplierThread, NULL, multiplier, arg) ||
     pthread_create( & sentinelThread, NULL, sentinel, arg) ||
     pthread_create( & readerThread, NULL, reader, arg)) {
     printErrorAndExit("Failed trying to create threads");
   }
   /* you need to join one of these threads... but which one? */
-  pthread_join(readerThread, NULL);
+  pthread_join(sentinelThread, NULL);
+  pthread_detach(degrouperThread);
   pthread_detach(multiplierThread);
   pthread_detach(adderThread);
-  pthread_detach(degrouperThread);
   pthread_detach(sentinelThread);
   pthread_detach(readerThread);
   /* everything is finished, print out the number of operations performed */
   fprintf(stdout, "Performed a total of %d operations\n", num_ops);
+  fprintf(stderr, "%s\n", buffer);
   pthread_mutex_destroy(&buffer_lock);
   return EXIT_SUCCESS;
 }
