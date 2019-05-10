@@ -257,6 +257,7 @@ void * sentinel(void * arg) {
       }
     }
     // something missing?
+    sched_yield();
   }
 }
 /* reader reads in lines of input from stdin and writes them to the
@@ -289,6 +290,7 @@ void * reader(void * arg) {
     if (tBuffer[0] == '.') {
       return NULL;
     }
+    sched_yield();
   }
 }
 /* Where it all begins */
@@ -314,7 +316,6 @@ int smp3_main(int argc, char ** argv) {
   pthread_detach(readerThread);
   /* everything is finished, print out the number of operations performed */
   fprintf(stdout, "Performed a total of %d operations\n", num_ops);
-  fprintf(stderr, "%s\n", buffer);
   pthread_mutex_destroy(&buffer_lock);
   return EXIT_SUCCESS;
 }
