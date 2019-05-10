@@ -232,7 +232,9 @@ void * sentinel(void * arg) {
   int i;
   // return NULL; /* remove this line */
   while (1) {
+    pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
+      pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
     /* storing this prevents having to recalculate it in the loop */
@@ -256,6 +258,7 @@ void * sentinel(void * arg) {
         numberBuffer[i] = buffer[i];
       }
     }
+    pthread_mutex_unlock(&buffer_lock);
     // something missing?
     sched_yield();
   }
@@ -282,15 +285,25 @@ void * reader(void * arg) {
     free = sizeof(buffer) - currentlen - 2;
     while (free < newlen) {
       // spinwaiting
+      pthread_mutex_lock(&buffer_lock);
+
+      currentlen = strlen(buffer);
+      free = sizeof(buffer) - currentlen - 2;
+
+      pthread_mutex_unlock(&buffer_lock);
+      sched_yield();
     }
     /* we can add another expression now */
+    pthread_mutex_lock(&buffer_lock);
     strcat(buffer, tBuffer);
     strcat(buffer, ";");
+    pthread_mutex_unlock(&buffer_lock);
+    sched_yield();
     /* Stop when user enters '.' */
     if (tBuffer[0] == '.') {
       return NULL;
     }
-    sched_yield();
+
   }
 }
 /* Where it all begins */

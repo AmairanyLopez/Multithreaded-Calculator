@@ -120,8 +120,12 @@ int test_multiple_lines(int argc, char **argv)
 /* Test the num_ops counter */
 int test_num_ops(int argc, char **argv)
 {
+    FILE* error;
     char *args[] = { "./calc", NULL };
     run_test("(1+2)*3\n((3+2)*1)\n(2+(2*2)+(2*(2+2)))\n.\n", 1, args);
+    error = fopen("err.txt", "w");
+    fprintf(error, "%d\n", num_ops);
+    fclose(error);
     quit_if(num_ops != 16);
     return EXIT_SUCCESS;
 }
