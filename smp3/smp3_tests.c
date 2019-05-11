@@ -38,15 +38,11 @@ int test_add(int argc, char **argv)
 {
     char *args[] = { "./calc", NULL };
     FILE *out;
-    FILE *error;
     int i;
     run_test("2+2\n.\n", 1, args);
     out = fopen("smp3.out", "r");
     fscanf(out, "%d\n", &i);
     fclose(out);
-    error = fopen("err.txt", "w");
-    fprintf(error, "Add: %d\n", i);
-    fclose(error);
     quit_if(i != 4);
     return EXIT_SUCCESS;
 }
@@ -56,15 +52,11 @@ int test_multiply(int argc, char **argv)
 {
     char *args[] = { "./calc", NULL };
     FILE *out;
-    FILE *error;
     int i;
     run_test("2*2\n.\n", 1, args);
     out = fopen("smp3.out", "r");
     fscanf(out, "%d\n", &i);
     fclose(out);
-    error = fopen("err.txt", "w");
-    fprintf(error, "\nMulti: %d\n", i);
-    fclose(error);
     quit_if(i != 4);
     return EXIT_SUCCESS;
 }
@@ -102,15 +94,11 @@ int test_all_operators(int argc, char **argv)
 {
     char *args[] = { "./calc", NULL };
     FILE *out;
-    FILE *error;
     int i;
     run_test("1+(2*3)+(4+5)\n.\n", 1, args);
     out = fopen("smp3.out", "r");
     fscanf(out, "%d\n", &i);
     fclose(out);
-    error = fopen("err.txt", "w");
-    fprintf(error, "\nAll operators: %d\n", i);
-    fclose(error);
     quit_if(i != 16);
     return EXIT_SUCCESS;
 }
@@ -132,15 +120,8 @@ int test_multiple_lines(int argc, char **argv)
 /* Test the num_ops counter */
 int test_num_ops(int argc, char **argv)
 {
-    FILE* error;
     char *args[] = { "./calc", NULL };
     run_test("(1+2)*3\n((3+2)*1)\n(2+(2*2)+(2*(2+2)))\n.\n", 1, args);
-    error = fopen("err.txt", "w");
-    fprintf(error, "%d\n", num_ops);
-    fclose(error);
-    error = fopen("err.txt", "w");
-    fprintf(error, "\nNum of ops: %d\n", num_ops);
-    fclose(error);
     quit_if(num_ops != 16);
     return EXIT_SUCCESS;
 }
@@ -169,7 +150,6 @@ int test_no_progress(int argc, char **argv)
     char *args[] = { "./calc", NULL };
     char line[30];
     FILE *out;
-    FILE *error;
     rv = fork();
     if (rv == 0) {
 	run_test("1++2\n", 1, args);
@@ -179,9 +159,6 @@ int test_no_progress(int argc, char **argv)
 	out = fopen("smp3.out", "r");
 	fgets(line, 30, out);
 	fclose(out);
-  error = fopen("err.txt", "w");
-  fprintf(error, "\nNo progress: %s\n", line);
-  fclose(error);
 	quit_if(strcmp(line, "No progress can be made\n"));
     }
     return EXIT_SUCCESS;

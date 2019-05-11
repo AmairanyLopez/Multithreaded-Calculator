@@ -62,8 +62,12 @@ void * adder(void * arg) {
       if (buffer[i] == ';') {
           break;
       }
+
       // start with a digit
       if (isdigit(buffer[i])) {
+        if(buffer[i] == '+' && buffer[i + 1] == '(') {
+          i = i + 2;
+        }
         startOffset = i;
         // parse 1st operand
         value1 = string2int(buffer + i);
@@ -128,8 +132,12 @@ void * multiplier(void * arg) {
       if (buffer[i] == ';') {
         break;
       }
+
       // start with a digit
       if (isdigit(buffer[i])) {
+        if(buffer[i] == '*' && buffer[i + 1] == '(') {
+          i = i + 2;
+        }
         startOffset = i;
         // parse 1st operand
         value1 = atoi(buffer + i);
@@ -189,26 +197,31 @@ void * degrouper(void * arg) {
     int naked = 1;
     for (i = 0; i < bufferlen; i++) {
       if(naked == 0) {
-        //printf("Evo me i tu\n");
         break;
       }
       // check for ';' to indicate finished processing expression
       if (buffer[i] == ';') {
         break;
       }
-
+      int j = i;
+      if(bufferlen > 0)
+      while(j < bufferlen) {
+        if(buffer[j] == '(') {
+          i = j;
+        }
+        j ++;
+      }
       // check for '(' followed by a naked number followed by ')'
       if (buffer[i] == '(' && isdigit(buffer[i + 1])) {
 
         startOffset = i;
         //increment index past all digits
         while (buffer[i] != ')') {
+          i ++;
           if(buffer[i] == '+' || buffer[i] == '*') {
-            //printf("Uso\n");
             naked = 0;
             break;
           }
-          i ++;
         }
         if(naked == 0)
           continue;
