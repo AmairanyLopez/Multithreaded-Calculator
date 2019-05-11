@@ -9,6 +9,7 @@ pthread_t readerThread;
 pthread_t sentinelThread;
 char buffer[BUF_SIZE];
 int num_ops;
+int operation;
 static pthread_mutex_t buffer_lock;
 /* Utiltity functions provided for your convenience */
 /* int2string converts an integer into a string and writes it in the
@@ -51,6 +52,7 @@ void * adder(void * arg) {
   while (1) {
     startOffset = remainderOffset = value1 = value2 = -1;
     pthread_mutex_lock(&buffer_lock);
+
     if (timeToFinish()) {
       pthread_mutex_unlock(&buffer_lock);
       return NULL;
@@ -64,6 +66,7 @@ void * adder(void * arg) {
       }
       // start with a digit
       if (isdigit(buffer[i])) {
+        operation = 1;
         startOffset = i;
         // parse 1st operand
         value1 = string2int(buffer + i);
@@ -72,7 +75,7 @@ void * adder(void * arg) {
           i++;
         }
         // check if current expression is a + expression
-        if (buffer[i] != '+') {
+        if (buffer[i] != '+' || !isdigit(buffer[i+1])) {
           // move onto next iteration if not a + expression
           continue;
         }
@@ -96,6 +99,8 @@ void * adder(void * arg) {
         i = startOffset + (strlen(nString)) - 1;
         // increment number of operations
         num_ops++;
+        operation = 0;
+
         // if(buffer[0] != '\0')
         //   printf("Add %s\n", buffer);
       }
@@ -118,6 +123,7 @@ void * multiplier(void * arg) {
   while (1) {
     startOffset = remainderOffset = value1 = value2 = -1;
     pthread_mutex_lock(&buffer_lock);
+
     if (timeToFinish()) {
       pthread_mutex_unlock(&buffer_lock);
       return NULL;
@@ -130,6 +136,7 @@ void * multiplier(void * arg) {
       }
       // start with a digit
       if (isdigit(buffer[i])) {
+        operation = 1;
         startOffset = i;
         // parse 1st operand
         value1 = atoi(buffer + i);
@@ -163,6 +170,8 @@ void * multiplier(void * arg) {
         // indicate that current thread has updated the buffer
         // increment number of operations
         num_ops++;
+        operation = 0;
+
         // if(buffer[0] != '\0')
         //   printf("Multi %s\n", buffer);
       }
@@ -180,6 +189,7 @@ void * degrouper(void * arg) {
   int i;
   while (1) {
     pthread_mutex_lock(&buffer_lock);
+
     if (timeToFinish()) {
       pthread_mutex_unlock(&buffer_lock);
       return NULL;
@@ -188,7 +198,6 @@ void * degrouper(void * arg) {
     bufferlen = (int) strlen(buffer);
 
     for (i = 0; i < bufferlen; i++) {
-
       // check for ';' to indicate finished processing expression
       if (buffer[i] == ';') {
         break;
@@ -196,6 +205,7 @@ void * degrouper(void * arg) {
 
       // check for '(' followed by a naked number followed by ')'
       if (buffer[i] == '(' && isdigit(buffer[i + 1])) {
+        operation = 1;
 
         startOffset = i;
 
@@ -213,6 +223,7 @@ void * degrouper(void * arg) {
         bufferlen -= 2;
         i = startOffset;
         num_ops++;
+        operation = 0;
         // if(buffer[0] != '\0')
         //   printf("Deg %s\n", buffer);
       }
@@ -239,10 +250,15 @@ void * sentinel(void * arg) {
     }
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = strlen(buffer);
+    if(operation == 1 && bufferlen > 0) {
+      printf("No progress can be made\n");
+      exit(EXIT_FAILURE);
+    }
     for (i = 0; i < bufferlen; i++) {
       if (buffer[i] == ';') {
         if (i == 0) {
           printErrorAndExit("Sentinel found empty expression!");
+          EXIT_FAILURE;
         } else {
           /* null terminate the string */
           numberBuffer[i] = '\0';
