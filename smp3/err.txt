@@ -1,3 +1,2 @@
 
-No progress: No progress can be made
-
+All operators: 16
