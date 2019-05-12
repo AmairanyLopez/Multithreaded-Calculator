@@ -9,6 +9,11 @@ pthread_t readerThread;
 pthread_t sentinelThread;
 char buffer[BUF_SIZE];
 int num_ops;
+int beforelen;
+int progress = 1;
+int addprogress = 1;
+int multiprogress = 1;
+int degprogress = 1;
 static pthread_mutex_t buffer_lock;
 /* Utiltity functions provided for your convenience */
 /* int2string converts an integer into a string and writes it in the
@@ -49,6 +54,7 @@ void * adder(void * arg) {
   int result; // sum of value1, value2
   char nString[50];
   while (1) {
+    addprogress = 1;
     startOffset = remainderOffset = value1 = value2 = -1;
     pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
@@ -59,12 +65,14 @@ void * adder(void * arg) {
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
+      beforelen = bufferlen;
       if (buffer[i] == ';') {
           break;
       }
 
       // start with a digit
       if (isdigit(buffer[i])) {
+
         if(buffer[i] == '+' && buffer[i + 1] == '(') {
           i = i + 2;
         }
@@ -104,6 +112,13 @@ void * adder(void * arg) {
         //   printf("Add %s\n", buffer);
       }
     }
+    // if(beforelen > 0)
+    //   printf("%d %ld\n", beforelen, strlen(nString));
+    if(strlen(nString) == 0 && bufferlen > 0) {
+      addprogress = 0;
+      // printf("No progress can be made\n" );
+      // exit(EXIT_FAILURE);
+    }
     pthread_mutex_unlock(&buffer_lock);
     sched_yield();
   }
@@ -120,6 +135,7 @@ void * multiplier(void * arg) {
   int result; // sum of value1, value2
   char nString[50];
   while (1) {
+    multiprogress = 1;
     startOffset = remainderOffset = value1 = value2 = -1;
     pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
@@ -129,6 +145,7 @@ void * multiplier(void * arg) {
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
+      beforelen = bufferlen;
       if (buffer[i] == ';') {
         break;
       }
@@ -175,6 +192,9 @@ void * multiplier(void * arg) {
         //   printf("Multi %s\n", buffer);
       }
     }
+    if(strlen(nString) == 0 && bufferlen > 0) {
+      multiprogress = 0;
+    }
     pthread_mutex_unlock(&buffer_lock);
     sched_yield();
   }
@@ -187,6 +207,7 @@ void * degrouper(void * arg) {
   int startOffset = 0;
   int i;
   while (1) {
+    degprogress = 1;
     pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
       pthread_mutex_unlock(&buffer_lock);
@@ -196,6 +217,7 @@ void * degrouper(void * arg) {
     bufferlen = (int) strlen(buffer);
     int naked = 1;
     for (i = 0; i < bufferlen; i++) {
+      beforelen = bufferlen;
       if(naked == 0) {
         break;
       }
@@ -239,6 +261,9 @@ void * degrouper(void * arg) {
         //   printf("Deg %s\n", buffer);
       }
     }
+    if(beforelen == bufferlen && bufferlen > 0) {
+      degprogress = 0;
+    }
     pthread_mutex_unlock(&buffer_lock);
     sched_yield();
   }
@@ -259,8 +284,16 @@ void * sentinel(void * arg) {
       pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
+
+    if(addprogress == 0 && multiprogress == 0 && degprogress == 0) {
+      printf("No progress can be made\n");
+      exit(EXIT_FAILURE);
+    }
+
     /* storing this prevents having to recalculate it in the loop */
     bufferlen = strlen(buffer);
+    // if(bufferlen > 0)
+    //   printf("%d %d %d\n", addprogress, multiprogress, degprogress);
     for (i = 0; i < bufferlen; i++) {
       if (buffer[i] == ';') {
         if (i == 0) {
