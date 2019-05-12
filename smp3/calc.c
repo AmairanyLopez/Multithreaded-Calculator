@@ -14,7 +14,8 @@ int progress = 1;
 int addprogress = 1;
 int multiprogress = 1;
 int degprogress = 1;
-static pthread_mutex_t buffer_lock;
+//static pthread_mutex_t buffer_lock;
+static sem_t progress_lock;
 /* Utiltity functions provided for your convenience */
 /* int2string converts an integer into a string and writes it in the
 passed char array s, which should be of reasonable size (e.g., 20
@@ -56,13 +57,14 @@ void * adder(void * arg) {
   while (1) {
     addprogress = 1;
     startOffset = remainderOffset = value1 = value2 = -1;
-    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
-      pthread_mutex_unlock(&buffer_lock);
+      //pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
 
     /* storing this prevents having to recalculate it in the loop */
+    sem_wait(&progress_lock);
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
       beforelen = bufferlen;
@@ -116,10 +118,9 @@ void * adder(void * arg) {
     //   printf("%d %ld\n", beforelen, strlen(nString));
     if(strlen(nString) == 0 && bufferlen > 0) {
       addprogress = 0;
-      // printf("No progress can be made\n" );
-      // exit(EXIT_FAILURE);
     }
-    pthread_mutex_unlock(&buffer_lock);
+    //pthread_mutex_unlock(&buffer_lock);
+    sem_post(&progress_lock);
     sched_yield();
   }
 }
@@ -137,12 +138,13 @@ void * multiplier(void * arg) {
   while (1) {
     multiprogress = 1;
     startOffset = remainderOffset = value1 = value2 = -1;
-    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
-      pthread_mutex_unlock(&buffer_lock);
+      //pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
     /* storing this prevents having to recalculate it in the loop */
+    sem_wait(&progress_lock);
     bufferlen = (int) strlen(buffer);
     for (i = 0; i < bufferlen; i++) {
       beforelen = bufferlen;
@@ -195,7 +197,8 @@ void * multiplier(void * arg) {
     if(strlen(nString) == 0 && bufferlen > 0) {
       multiprogress = 0;
     }
-    pthread_mutex_unlock(&buffer_lock);
+    //pthread_mutex_unlock(&buffer_lock);
+    sem_post(&progress_lock);
     sched_yield();
   }
 }
@@ -208,12 +211,13 @@ void * degrouper(void * arg) {
   int i;
   while (1) {
     degprogress = 1;
-    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
-      pthread_mutex_unlock(&buffer_lock);
+      //pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
     /* storing this prevents having to recalculate it in the loop */
+    sem_wait(&progress_lock);
     bufferlen = (int) strlen(buffer);
     int naked = 1;
     for (i = 0; i < bufferlen; i++) {
@@ -264,7 +268,8 @@ void * degrouper(void * arg) {
     if(beforelen == bufferlen && bufferlen > 0) {
       degprogress = 0;
     }
-    pthread_mutex_unlock(&buffer_lock);
+    //pthread_mutex_unlock(&buffer_lock);
+    sem_post(&progress_lock);
     sched_yield();
   }
 }
@@ -279,9 +284,9 @@ void * sentinel(void * arg) {
   int i;
   // return NULL; /* remove this line */
   while (1) {
-    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&buffer_lock);
     if (timeToFinish()) {
-      pthread_mutex_unlock(&buffer_lock);
+      //pthread_mutex_unlock(&buffer_lock);
       return NULL;
     }
 
@@ -291,6 +296,7 @@ void * sentinel(void * arg) {
     }
 
     /* storing this prevents having to recalculate it in the loop */
+    sem_wait(&progress_lock);
     bufferlen = strlen(buffer);
     // if(bufferlen > 0)
     //   printf("%d %d %d\n", addprogress, multiprogress, degprogress);
@@ -313,8 +319,9 @@ void * sentinel(void * arg) {
         numberBuffer[i] = buffer[i];
       }
     }
-    pthread_mutex_unlock(&buffer_lock);
+    //pthread_mutex_unlock(&buffer_lock);
     // something missing?
+    sem_post(&progress_lock);
     sched_yield();
   }
 }
@@ -340,19 +347,21 @@ void * reader(void * arg) {
     free = sizeof(buffer) - currentlen - 2;
     while (free < newlen) {
       // spinwaiting
-      pthread_mutex_lock(&buffer_lock);
-
-      currentlen = strlen(buffer);
-      free = sizeof(buffer) - currentlen - 2;
-
-      pthread_mutex_unlock(&buffer_lock);
-      sched_yield();
+      // pthread_mutex_lock(&buffer_lock);
+      //
+      // currentlen = strlen(buffer);
+      // free = sizeof(buffer) - currentlen - 2;
+      //
+      // pthread_mutex_unlock(&buffer_lock);
+      // sched_yield();
     }
     /* we can add another expression now */
-    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&buffer_lock);
     strcat(buffer, tBuffer);
     strcat(buffer, ";");
-    pthread_mutex_unlock(&buffer_lock);
+    //pthread_mutex_unlock(&buffer_lock);
+    sem_wait(&progress_lock);
+    sem_post(&progress_lock);
     sched_yield();
     /* Stop when user enters '.' */
     if (tBuffer[0] == '.') {
@@ -364,8 +373,12 @@ void * reader(void * arg) {
 /* Where it all begins */
 int smp3_main(int argc, char ** argv) {
   void * arg = 0; /* dummy value */
-  if(pthread_mutex_init(&buffer_lock, NULL) != 0){
-    printErrorAndExit("Failed to create mutex");
+  // if(pthread_mutex_init(&buffer_lock, NULL) != 0){
+  //   printErrorAndExit("Failed to create mutex");
+  // }
+  if(sem_init(&progress_lock, 0, 1) != 0) {
+    printf("sadas\n");
+    printErrorAndExit("Failed to create semaphore");
   }
   /* let's create our threads */
   if (pthread_create( & degrouperThread, NULL, degrouper, arg) ||
@@ -384,6 +397,6 @@ int smp3_main(int argc, char ** argv) {
   pthread_detach(readerThread);
   /* everything is finished, print out the number of operations performed */
   fprintf(stdout, "Performed a total of %d operations\n", num_ops);
-  pthread_mutex_destroy(&buffer_lock);
+  //pthread_mutex_destroy(&buffer_lock);
   return EXIT_SUCCESS;
 }
